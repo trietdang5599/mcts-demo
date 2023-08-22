@@ -1,5 +1,4 @@
 import gym
-import dyna_gym.envs.nscartpole_v2
 import dyna_gym.agents.uct as uct
 
 ### Parameters
