@@ -1,5 +1,7 @@
 import numpy as np
 from math import isclose
+import itertools
+from gym import spaces
 
 def close(a, b, r=13):
     return isclose(round(a,r), round(b,r), rel_tol=1e-12, abs_tol=0.0)
@@ -35,3 +37,11 @@ def amax(v):
             vmax = v[i]
             index = i
     return vmax, index
+
+def combinations(space):
+    if isinstance(space, spaces.Discrete):
+        return range(space.n)
+    elif isinstance(space, spaces.Tuple):
+        return itertools.product(*[combinations(s) for s in space.spaces])
+    else:
+        raise NotImplementedError

@@ -1,5 +1,12 @@
 # Dyna Gym
 
+This is a fork of DynaGym that focuses on using MCTS for LLMs.
+
+TODOs
+- [ ] Add a Huggingface model-based default policy.
+
+---
+
 This is a pip package implementing Reinforcement Learning algorithms in non-stationary environments supported by the <a href="https://gym.openai.com/">OpenAI Gym</a> toolkit.
 It contains both the dynamic environments i.e. whose transition and reward functions depend on the time and some algorithms implementations.
 
@@ -48,9 +55,7 @@ For each environment, the id given as argument to the gym.make function is write
 The implemented algorithms are the following and can be found at `dyna-gym/dyna_gym/agents`.
 - Random action selection;
 - Vanilla MCTS algorithm (random tree policy);
-- <a href="http://ggp.stanford.edu/readings/uct.pdf">UCT algorithm</a>;
-- <a href="https://arxiv.org/abs/1805.01367">OLUCT algorithm</a>;
-- Online Asynchronous Dynamic Programming with tree structure.
+- <a href="http://ggp.stanford.edu/readings/uct.pdf">UCT algorithm</a>.
 
 # Installation
 

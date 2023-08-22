@@ -4,32 +4,54 @@ UCT Algorithm
 Required features of the environment:
 env.state
 env.action_space
-env.transition(s ,a , is_model_dynamic)
+env.transition(s, a, is_model_dynamic)
 env.equality_operator(s1, s2)
 """
 
 import dyna_gym.agents.mcts as mcts
-import dyna_gym.utils.utils as utils
+from dyna_gym.utils.utils import combinations
 from math import sqrt, log
 from gym import spaces
 
-def uct_tree_policy(ag, children):
-    return max(children, key=ag.ucb)
-
-def p_uct_tree_policy(ag, children):
-    return max(children, key=ag.p_ucb)
-
-def var_p_uct_tree_policy(ag, children):
-    return max(children, key=ag.var_p_ucb)
 
 class UCT(object):
     """
     UCT agent
     """
-    def __init__(self, action_space, rollouts=100, horizon=100, gamma=0.9, ucb_constant=6.36396103068, ucb_base=50.,
-                 is_model_dynamic=True, width=None, dp=None, ts_mode='best', reuse_tree=False, alg='uct'):
+    def __init__(
+            self,
+            action_space,
+            rollouts=100,
+            horizon=100,
+            gamma=0.9,
+            ucb_constant=6.36396103068,
+            ucb_base=50.,
+            is_model_dynamic=True,
+            width=None,
+            dp=None,
+            ts_mode='sample',
+            reuse_tree=False,
+            alg='uct'
+    ):
+        """
+        Args:
+            action_space: action space of the environment
+            rollouts: total number of rollouts (the number of loops over selection, expansion, simulation and backpropagation)
+            horizon: maximum length of the rollouts
+            gamma: discount factor
+            ucb_constant: constant for the UCB exploration
+            ucb_base: base for the UCB exploration, only used in var_p_uct
+            is_model_dynamic: whether the model is dynamic
+            width: number of children for each node, default is num of actions
+            dp: an optional default policy, it should have two methods:
+                - dp.get_predict_sequence(state), which returns a complete sequence starting from state
+                - dp.get_top_k_predict(state), which returns the top k actions starting from state
+            ts_mode: the mode for tree search, can be 'sample', 'best'
+            reuse_tree: whether to reuse the tree from the previous step if the algorithm is called multiple times
+            alg: exact UCT algorithm to use, can be 'uct', 'p_uct', 'var_p_uct'
+        """
         if type(action_space) == spaces.discrete.Discrete:
-            self.action_space = list(mcts.combinations(action_space))
+            self.action_space = list(combinations(action_space))
         else:
             self.action_space = action_space
         self.n_actions = len(self.action_space)
@@ -44,29 +66,20 @@ class UCT(object):
         self.ts_mode = ts_mode
         self.reuse_tree = reuse_tree
 
-        if alg == 'uct':
-            self.tree_policy = uct_tree_policy
-        elif alg == 'p_uct':
-            self.tree_policy = p_uct_tree_policy
-        elif alg == 'var_p_uct':
-            self.tree_policy = var_p_uct_tree_policy
-            self.ucb_base = ucb_base
+        act_selection_criteria = {
+            'uct': self.ucb,
+            'p_uct': self.p_ucb,
+            'var_p_uct': self.var_p_ucb
+        }
+        if alg in ['uct', 'p_uct', 'var_p_uct']:
+            self.tree_policy = lambda children: max(children, key=act_selection_criteria[alg])
+
+            if alg == 'var_p_uct':
+                self.ucb_base = ucb_base
         else:
             raise Exception(f'unknown uct alg {alg}')
 
         self.root = None
-
-    def reset(self, p=None):
-        """
-        Reset the attributes.
-        Expect to receive them in the same order as init.
-        p : list of parameters
-        """
-        if p == None:
-            self.__init__(self.action_space)
-        else:
-            utils.assert_types(p,[spaces.discrete.Discrete, int, int, float, float, bool])
-            self.__init__(p[0], p[1], p[2], p[3], p[4], p[5])
 
     def display(self):
         """
@@ -104,7 +117,7 @@ class UCT(object):
         return mcts.chance_node_value(node)\
             + ucb_parameter * node.prob * sqrt(log(node.parent.visits)) / (1 + len(node.sampled_returns))
 
-    def act(self, env, done, rollout_weight=1, term_cond=None):
+    def act(self, env, done, term_cond=None):
         root = self.root if self.reuse_tree else None
-        opt_act, self.root = mcts.mcts_procedure(self, self.tree_policy, env, done, root=root, rollout_weight=rollout_weight, term_cond=term_cond)
+        opt_act, self.root = mcts.mcts_procedure(self, self.tree_policy, env, done, root=root, term_cond=term_cond)
         return opt_act

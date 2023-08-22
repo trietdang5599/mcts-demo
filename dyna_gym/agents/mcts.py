@@ -8,14 +8,9 @@ env.transition(s ,a , is_model_dynamic)
 env.equality_operator(s1, s2)
 """
 import random
-import itertools
-import warnings
-
-from tqdm import tqdm
-
-import dyna_gym.utils.utils as utils
 from gym import spaces
-import numpy as np
+
+from dyna_gym.utils.utils import combinations
 
 
 def chance_node_value(node, mode="best"):
@@ -33,22 +28,25 @@ def chance_node_value(node, mode="best"):
     else:
         raise Exception(f"Unknown tree search mode {mode}")
 
-def combinations(space):
-    if isinstance(space, spaces.Discrete):
-        return range(space.n)
-    elif isinstance(space, spaces.Tuple):
-        return itertools.product(*[combinations(s) for s in space.spaces])
-    else:
-        raise NotImplementedError
 
-def mcts_tree_policy(ag, children):
+def mcts_tree_policy(children):
     return random.choice(children)
 
-def mcts_procedure(ag, tree_policy, env, done, root=None, rollout_weight=1., term_cond=None, ts_mode="best"):
+
+def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mode="sample"):
     """
     Compute the entire MCTS procedure wrt to the selected tree policy.
     Funciton tree_policy is a function taking an agent + a list of ChanceNodes as argument
     and returning the one chosen by the tree policy.
+
+    Args:
+        ag: the agent
+        tree_policy: the action selection policy
+        env: the gym environment
+        done: whether the current state is terminal
+        root: the root of the tree, reuse the tree if not None, otherwise create a new tree
+        term_cond: termination condition, if not None, the procedure will terminate when term_cond() is True
+        ts_mode: the mode for tree search, can be 'sample', 'best'
     """
     decision_node_num = 0
     if root is not None:
@@ -59,13 +57,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, rollout_weight=1., ter
         root = DecisionNode(None, env.state, ag.action_space.copy(), done, dp=ag.dp, id=decision_node_num)
         decision_node_num += 1
 
-    # make sure the rollout number is at least one, and is at most ag.rollouts
-    if rollout_weight > 1:
-        warnings.warn("How come rollout_weight > 1? Setting to 1.")
-
-    rollouts = np.clip(int(ag.rollouts * rollout_weight), 1, ag.rollouts)
-
-    for _ in tqdm(range(rollouts), desc="Performing rollouts"):
+    for _ in range(ag.rollouts):
         if term_cond is not None and term_cond():
             break
         rewards = [] # Rewards collected along the tree for the current rollout
@@ -79,7 +71,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, rollout_weight=1., ter
                 if node.is_terminal:
                     select = False # Selected a terminal DecisionNode
                 else:
-                    node = tree_policy(ag, node.children) # Move down the tree, node is now a ChanceNode
+                    node = tree_policy(node.children) # Move down the tree, node is now a ChanceNode
             else: # ChanceNode
                 # Given s, a, sample s' ~ p(s'|s,a), also get the reward r(s,a,s') and whether s' is terminal
                 state_p, reward, terminal = env.transition(node.parent.state, node.action, ag.is_model_dynamic)
@@ -96,7 +88,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, rollout_weight=1., ter
                         break
 
                 if new_state:
-                    # Selected a ChanceNode
+                    # Selected a node for expansion
                     select = False
 
                     # Expansion to create a new DecisionNode
@@ -144,6 +136,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, rollout_weight=1., ter
         assert len(rewards) == 0
 
     return max(root.children, key=lambda n: chance_node_value(n, mode=ts_mode)).action, root
+
 
 class DecisionNode:
     """
@@ -221,19 +214,6 @@ class MCTS(object):
         self.gamma = gamma
         self.is_model_dynamic = is_model_dynamic
         self.dp = dp
-
-    def reset(self, p=None):
-        """
-        Reset the attributes.
-        Expect to receive them in the same order as init.
-        p : list of parameters
-        """
-        if p == None:
-            self.__init__(self.action_space)
-        else:
-            utils.assert_types(p,[spaces.discrete.Discrete, int, int, float, bool])
-            self.__init__(p[0], p[1], p[2], p[3], p[4])
-
 
     def display(self):
         """
