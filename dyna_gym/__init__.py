@@ -64,3 +64,8 @@ register(
     id='NSCartPole-v2',
     entry_point='dyna_gym.envs:NSCartPoleV2',
 )
+
+register(
+    id='LanguageEnv-v0',
+    entry_point='dyna_gym.envs:LanguageEnv',
+)

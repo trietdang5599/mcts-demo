@@ -54,7 +54,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
         assert root.state == env.state
     else:
         # create an empty tree
-        root = DecisionNode(None, env.state, ag.action_space.copy(), done, dp=ag.dp, id=decision_node_num)
+        root = DecisionNode(None, env.state, ag.action_space.copy(), done, default_policy=ag.default_policy, id=decision_node_num)
         decision_node_num += 1
 
     for _ in range(ag.rollouts):
@@ -92,7 +92,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
                     select = False
 
                     # Expansion to create a new DecisionNode
-                    new_node = DecisionNode(node, state_p, ag.action_space.copy(), terminal, dp=ag.dp, id=decision_node_num)
+                    new_node = DecisionNode(node, state_p, ag.action_space.copy(), terminal, default_policy=ag.default_policy, id=decision_node_num)
                     node.children.append(new_node)
                     decision_node_num += 1
                     node = node.children[-1]
@@ -101,7 +101,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
         # now `rewards` collected all rewards in the ChanceNodes above this node
         assert(type(node) == DecisionNode)
         state = node.state
-        if ag.dp is None:
+        if ag.default_policy is None:
             t = 0
             estimate = 0
             while (not terminal) and (t < ag.horizon):
@@ -112,10 +112,11 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
         else:
             if not node.is_terminal:
                 # follow the default policy to get a terminal state
-                state = ag.dp.get_predict_sequence(state)
+                state = ag.default_policy.get_predicted_sequence(state)
                 estimate = env.get_reward(state)
 
-                # save this information for demo
+                ag.rolled_out_trajectories.append(state)
+                # also save this to current nodes for possible visualization
                 node.info['complete_program'] = state
             else:
                 # the rewards are defined on terminating actions, the terminal states have no rewards
@@ -143,9 +144,9 @@ class DecisionNode:
     Decision node class, labelled by a state
 
     Args:
-        dp: default policy, used to prioritize and filter possible actions
+        default_policy: default policy, used to prioritize and filter possible actions
     """
-    def __init__(self, parent, state, possible_actions=[], is_terminal=False, dp=None, id=None):
+    def __init__(self, parent, state, possible_actions=[], is_terminal=False, default_policy=None, id=None):
         self.id = id
         self.parent = parent
         self.state = state
@@ -154,22 +155,22 @@ class DecisionNode:
             self.depth = 0
         else: # Non root node
             self.depth = parent.depth + 1
-        if dp is None:
+        if default_policy is None:
             self.possible_actions = possible_actions
             random.shuffle(self.possible_actions)
 
             # if no default policy is provided, assume selection probability is uniform
             self.action_scores = [1.0 / len(self.possible_actions)] * len(self.possible_actions)
         else:
-            # get possible actions from dp
-            # default policy suggests what children to consider
-            top_k_predict, top_k_scores = dp.get_top_k_predict(self.state)
+            # get possible actions from default policy
+            top_k_predict, top_k_scores = default_policy.get_top_k_tokens(self.state)
 
             self.possible_actions = top_k_predict
             self.action_scores = top_k_scores
 
         # populate its children
-        self.children = [ChanceNode(self, (act, score)) for act, score in zip(self.possible_actions, self.action_scores)]
+        self.children = [ChanceNode(self, (act, score))
+                         for act, score in zip(self.possible_actions, self.action_scores)]
 
         self.explored_children = 0
         # this decision node should be visited at least once, otherwise p-uct makes no sense for this node
@@ -203,7 +204,7 @@ class MCTS(object):
     """
     MCTS agent
     """
-    def __init__(self, action_space, rollouts=100, horizon=100, gamma=0.9, is_model_dynamic=True, dp=None):
+    def __init__(self, action_space, rollouts=100, horizon=100, gamma=0.9, is_model_dynamic=True, default_policy=None):
         if type(action_space) == spaces.discrete.Discrete:
             self.action_space = list(combinations(action_space))
         else:
@@ -213,7 +214,7 @@ class MCTS(object):
         self.horizon = horizon
         self.gamma = gamma
         self.is_model_dynamic = is_model_dynamic
-        self.dp = dp
+        self.default_policy = default_policy
 
     def display(self):
         """

@@ -3,7 +3,8 @@
 This is a fork of DynaGym that focuses on using MCTS for LLMs.
 
 TODOs
-- [ ] Add a Huggingface model-based default policy.
+- [x] Add a Huggingface model-based default policy.
+- [ ] Update this README.
 
 ---
 

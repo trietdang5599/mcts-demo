@@ -20,7 +20,7 @@ class UCT(object):
     """
     def __init__(
             self,
-            action_space,
+            action_space=[],
             rollouts=100,
             horizon=100,
             gamma=0.9,
@@ -28,7 +28,7 @@ class UCT(object):
             ucb_base=50.,
             is_model_dynamic=True,
             width=None,
-            dp=None,
+            default_policy=None,
             ts_mode='sample',
             reuse_tree=False,
             alg='uct'
@@ -43,9 +43,7 @@ class UCT(object):
             ucb_base: base for the UCB exploration, only used in var_p_uct
             is_model_dynamic: whether the model is dynamic
             width: number of children for each node, default is num of actions
-            dp: an optional default policy, it should have two methods:
-                - dp.get_predict_sequence(state), which returns a complete sequence starting from state
-                - dp.get_top_k_predict(state), which returns the top k actions starting from state
+            default_policy: an optional default policy that returns a most-likely sequence and top-k most-likely next tokens
             ts_mode: the mode for tree search, can be 'sample', 'best'
             reuse_tree: whether to reuse the tree from the previous step if the algorithm is called multiple times
             alg: exact UCT algorithm to use, can be 'uct', 'p_uct', 'var_p_uct'
@@ -62,7 +60,7 @@ class UCT(object):
         self.is_model_dynamic = is_model_dynamic
         # the number of children for each node, default is num of actions
         self.width = width or self.n_actions
-        self.dp = dp
+        self.default_policy = default_policy
         self.ts_mode = ts_mode
         self.reuse_tree = reuse_tree
 
@@ -80,6 +78,7 @@ class UCT(object):
             raise Exception(f'unknown uct alg {alg}')
 
         self.root = None
+        self.rolled_out_trajectories = []
 
     def display(self):
         """
