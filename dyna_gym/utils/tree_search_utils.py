@@ -1,4 +1,5 @@
 import networkx as nx
+import numpy as np
 from matplotlib import pyplot as plt
 
 from dyna_gym.agents.mcts import DecisionNode, ChanceNode, chance_node_value
@@ -52,7 +53,7 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
     def printer(node: ChanceNode, depth):
         # print the average return of the *parent* of this state
         # (this is easier to implement than printing all its children nodes)
-        print("\t" * depth, repr(tokenizer.decode(node.action)), 'logit', node.prob, 'v', chance_node_value(node), 'len(returns)', len(node.sampled_returns))
+        print("\t" * depth, repr(tokenizer.decode(node.action)), 'logit', node.prob, 'v', chance_node_value(node), 'returns', node.sampled_returns)
 
     pre_order_traverse(root, chance_node_fn=printer)
 
@@ -67,7 +68,8 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
 
             G.add_node(child_id)
 
-            edge_label = f'{repr(tokenizer.decode(node.action))} v={chance_node_value(node):.2f}'
+            avg_return = np.mean(node.sampled_returns)
+            edge_label = f'{repr(tokenizer.decode(node.action))} r={avg_return:.2f}'
             G.add_edge(parent_id, child_id, label=edge_label)
 
     pre_order_traverse(root, chance_node_fn=add_node)

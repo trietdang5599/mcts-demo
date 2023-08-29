@@ -15,11 +15,11 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
             env: gym.Env,
             horizon: int,
             model: PreTrainedModel,
-            temperature: float = 0.7,
+            generation_args: dict = {},
     ):
         super().__init__(k, env, horizon)
         self.model = model
-        self.temperature = temperature
+        self.generate_args = generation_args
 
     @torch.no_grad()
     def get_predicted_sequence(self, state, horizon=None):
@@ -33,10 +33,9 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
             top_k=self.k,
             max_length=horizon,
             early_stopping=True,
-            do_sample=True,
-            temperature=self.temperature,
             return_dict_in_generate=True,
             use_cache=True,
+            **self.generate_args
         )
         sequence = outputs.sequences[0].tolist()
 
