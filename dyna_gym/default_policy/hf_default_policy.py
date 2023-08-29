@@ -9,9 +9,17 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
     """
     Default policy that uses a HuggingFace transformer model.
     """
-    def __init__(self, k: int, env: gym.Env, horizon: int, model: PreTrainedModel):
+    def __init__(
+            self,
+            k: int,
+            env: gym.Env,
+            horizon: int,
+            model: PreTrainedModel,
+            temperature: float = 0.7,
+    ):
         super().__init__(k, env, horizon)
         self.model = model
+        self.temperature = temperature
 
     @torch.no_grad()
     def get_predicted_sequence(self, state, horizon=None):
@@ -25,10 +33,14 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
             top_k=self.k,
             max_length=horizon,
             early_stopping=True,
+            do_sample=True,
+            temperature=self.temperature,
+            return_dict_in_generate=True,
             use_cache=True,
         )
+        sequence = outputs.sequences[0].tolist()
 
-        return outputs[0].tolist()
+        return sequence
 
     @torch.no_grad()
     def get_top_k_tokens(self, state):
