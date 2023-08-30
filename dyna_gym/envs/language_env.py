@@ -3,8 +3,6 @@ from collections import OrderedDict
 import gym
 import torch
 
-from dyna_gym.utils.utils import multigpu_breakpoint
-
 
 class LanguageEnv(gym.Env):
     """
@@ -54,4 +52,5 @@ class LanguageEnv(gym.Env):
         return self.state, reward, done, {}
 
     def equality_operator(self, s1, s2):
-        return s1 == s2
+        # s1 and s2 are two tensors
+        return torch.equal(s1, s2)

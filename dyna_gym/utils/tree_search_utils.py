@@ -1,3 +1,5 @@
+import random
+
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
@@ -53,7 +55,11 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
     def printer(node: ChanceNode, depth):
         # print the average return of the *parent* of this state
         # (this is easier to implement than printing all its children nodes)
-        print("\t" * depth, repr(tokenizer.decode(node.action)), 'logit', node.prob, 'v', chance_node_value(node), 'returns', node.sampled_returns)
+        print("\t" * depth,
+              repr(tokenizer.decode(node.action)),
+              'prob', node.prob,
+              'v', chance_node_value(node),
+              'returns', node.sampled_returns)
 
     pre_order_traverse(root, chance_node_fn=printer)
 
@@ -69,7 +75,7 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
             G.add_node(child_id)
 
             avg_return = np.mean(node.sampled_returns)
-            edge_label = f'{repr(tokenizer.decode(node.action))} r={avg_return:.2f}'
+            edge_label = f'{repr(tokenizer.decode(node.action))} p={node.prob:.2f} r={avg_return:.2f}'
             G.add_edge(parent_id, child_id, label=edge_label)
 
     pre_order_traverse(root, chance_node_fn=add_node)
@@ -89,8 +95,7 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
 
 def convert_to_json(root: DecisionNode, env, selected_act):
     """
-    Save the information of children of root into a list.
-    Does not distinguish layers. So works when the tree only expands one level.
+    A function to serialize a tree and return a json object
     """
     ret = []
 
@@ -113,7 +118,12 @@ def convert_to_json(root: DecisionNode, env, selected_act):
 
 
 def hierarchy_pos(G, root=None, width=1., vert_gap=0.2, vert_loc=0, leaf_vs_root_factor=0.5):
-    '''
+    """
+    Shun: As of early 2023, I couldn't find a layout in graphviz that plots a tree nicely.
+    So I'm using the following function found in this answer:
+    https://stackoverflow.com/a/29597209/1025757
+
+    ---
     If the graph is a tree this will return the positions to plot this in a
     hierarchical layout.
 
@@ -159,7 +169,7 @@ def hierarchy_pos(G, root=None, width=1., vert_gap=0.2, vert_loc=0, leaf_vs_root
     **leaf_vs_root_factor**
 
     xcenter: horizontal location of root
-    '''
+    """
     if not nx.is_tree(G):
         raise TypeError('cannot use hierarchy_pos on a graph that is not a tree')
 

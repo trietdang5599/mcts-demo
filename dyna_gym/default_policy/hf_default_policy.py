@@ -11,13 +11,12 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
     """
     def __init__(
             self,
-            k: int,
             env: gym.Env,
             horizon: int,
             model: PreTrainedModel,
             generation_args: dict = {},
     ):
-        super().__init__(k, env, horizon)
+        super().__init__(env, horizon)
         self.model = model
         self.generate_args = generation_args
 
@@ -30,7 +29,6 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
 
         outputs = self.model.generate(
             input_data,
-            top_k=self.k,
             max_length=horizon,
             early_stopping=True,
             return_dict_in_generate=True,
@@ -43,6 +41,9 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
 
     @torch.no_grad()
     def get_top_k_tokens(self, state):
+        k = self.generate_args['top_k']
+        p = self.generate_args['top_p']
+
         # Create a batch dimension
         input_data = state.unsqueeze(0)
 
@@ -51,11 +52,23 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
         # Assuming the model returns logits for tokens
         logits = outputs.logits[0][-1]  # First (and only) batch, last token
 
-        # Get the top k logits and their indices
-        topk_values, topk_indices = torch.topk(logits, self.k)
+        # Convert logits to probabilities
+        all_probs = torch.softmax(logits, dim=-1)
 
-        # Convert PyTorch tensors to Python lists
-        topk_values_list = topk_values.tolist()
-        topk_indices_list = topk_indices.tolist()
+        # Get the top k probabilities and their indices, already sorted
+        topk_probs, topk_indices = torch.topk(all_probs, k, sorted=True)
 
-        return topk_indices_list, topk_values_list
+        # Compute the cumulative sum of the sorted probabilities
+        cumsum_probs = torch.cumsum(topk_probs, dim=-1)
+
+        # Find tokens where the cumulative sum exceeds p
+        exceed_p_mask = cumsum_probs > p
+
+        # Find the smallest set of tokens whose cumulative probability exceeds p
+        mask = exceed_p_mask.cumsum(dim=-1) <= 1
+
+        # Apply the mask to get final tokens and their probabilities
+        final_indices = topk_indices[mask].tolist()
+        final_probs = topk_probs[mask].tolist()
+
+        return final_indices, final_probs

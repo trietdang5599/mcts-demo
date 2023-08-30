@@ -4,14 +4,13 @@ import gym
 
 
 class DefaultPolicy:
-    def __init__(self, k: int, env: gym.Env, horizon: int):
+    def __init__(self, env: gym.Env, horizon: int):
         """
         Args:
             k: number of top k predictions to return
             env: environment
             horizon: horizon of the environment (the maximum number of steps in an episode)
         """
-        self.k = k
         self.env = env
         self.horizon = horizon
 
