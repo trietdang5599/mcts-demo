@@ -1,6 +1,8 @@
 import numpy as np
 from math import isclose
 import itertools
+
+import torch
 from gym import spaces
 
 def close(a, b, r=13):
@@ -45,3 +47,10 @@ def combinations(space):
         return itertools.product(*[combinations(s) for s in space.spaces])
     else:
         raise NotImplementedError
+
+def multigpu_breakpoint():
+    if torch.distributed.is_initialized():
+        if torch.distributed.get_rank() == 0:
+            breakpoint()
+        else:
+            torch.distributed.barrier()

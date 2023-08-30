@@ -11,4 +11,4 @@ from dyna_gym.envs.nsbridge_v2 import NSBridgeV2
 from dyna_gym.envs.nscartpole_v0 import NSCartPoleV0
 from dyna_gym.envs.nscartpole_v1 import NSCartPoleV1
 from dyna_gym.envs.nscartpole_v2 import NSCartPoleV2
-from dyna_gym.envs.language import LanguageEnv
+from dyna_gym.envs.language_env import LanguageEnv

@@ -25,8 +25,8 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
     def get_predicted_sequence(self, state, horizon=None):
         horizon = horizon if horizon is not None else self.horizon
 
-        # Convert the tokenized state into a PyTorch tensor
-        input_data = torch.tensor([state])
+        # Create a batch dimension
+        input_data = state.unsqueeze(0)
 
         outputs = self.model.generate(
             input_data,
@@ -37,14 +37,14 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
             use_cache=True,
             **self.generate_args
         )
-        sequence = outputs.sequences[0].tolist()
+        sequence = outputs.sequences.squeeze(0)
 
         return sequence
 
     @torch.no_grad()
     def get_top_k_tokens(self, state):
-        # Convert the tokenized state into a PyTorch tensor
-        input_data = torch.tensor([state])
+        # Create a batch dimension
+        input_data = state.unsqueeze(0)
 
         outputs = self.model(**{'input_ids': input_data})
 

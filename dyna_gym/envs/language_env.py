@@ -1,6 +1,9 @@
 from collections import OrderedDict
 
 import gym
+import torch
+
+from dyna_gym.utils.utils import multigpu_breakpoint
 
 
 class LanguageEnv(gym.Env):
@@ -21,18 +24,16 @@ class LanguageEnv(gym.Env):
         """
         self.terminal_token = terminal_token
         self.horizon = horizon
-        self._reward_func = reward_func
 
-        # state -> reward
-        # reward function may be expensive to compute (possibly using another neural model), so we cache the results
-        self.cached_reward = OrderedDict()
+        self.get_reward = reward_func
 
     def reset(self, init_state):
         self.state = init_state
         return self.state
 
     def transition(self, s, a, is_model_dynamic=False):
-        next_state = s + [a]
+        # s is a one-dimensional tensor, a is a token id (scalar), concatenate them to form a new state
+        next_state = torch.cat([s, torch.tensor([a]).to(s.device)])
 
         if a == self.terminal_token or len(next_state) == self.horizon:
             # either the text finishes, or the state reaches the maximum length
@@ -51,17 +52,6 @@ class LanguageEnv(gym.Env):
         self.state, reward, done = self.transition(self.state, action)
 
         return self.state, reward, done, {}
-
-    def get_reward(self, state):
-        if tuple(state) in self.cached_reward.keys():
-            # cache rewards for training
-            return self.cached_reward[tuple(state)]
-
-        reward = self._reward_func(state)
-
-        self.cached_reward[tuple(state)] = reward
-
-        return reward
 
     def equality_operator(self, s1, s2):
         return s1 == s2
