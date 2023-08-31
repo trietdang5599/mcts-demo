@@ -77,6 +77,9 @@ class UCT(object):
         else:
             raise Exception(f'unknown uct alg {alg}')
 
+        self.reset()
+
+    def reset(self):
         self.root = None
         self.rolled_out_trajectories = []
 

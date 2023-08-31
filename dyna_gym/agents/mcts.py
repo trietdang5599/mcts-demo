@@ -116,9 +116,9 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
                 state = ag.default_policy.get_predicted_sequence(state)
                 estimate = env.get_reward(state)
 
-                ag.rolled_out_trajectories.append(state)
+                ag.rolled_out_trajectories.append(state[0])
                 # also save this to current nodes for possible visualization
-                node.info['complete_program'] = state
+                node.info['complete_program'] = state[0]
             else:
                 # the rewards are defined on terminating actions, the terminal states have no rewards
                 estimate = 0
