@@ -102,6 +102,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
         # now `rewards` collected all rewards in the ChanceNodes above this node
         assert(type(node) == DecisionNode)
         state = node.state
+        current_state = state
         if ag.default_policy is None:
             t = 0
             estimate = 0
@@ -122,6 +123,14 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
             else:
                 # the rewards are defined on terminating actions, the terminal states have no rewards
                 estimate = 0
+
+        if ag.lambda_coeff > 0:
+            assert ag.value_func is not None, "value_func must be provided if lambda_coeff > 0"
+
+            input_ids = current_state[0][:env.input_len]
+            response_ids = current_state[0][env.input_len:]
+            value = ag.value_func(input_ids, response_ids)
+            estimate = ag.lambda_coeff * value + (1 - ag.lambda_coeff) * estimate
 
         # Backpropagation
         node.visits += 1

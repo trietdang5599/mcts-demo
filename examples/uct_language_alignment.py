@@ -1,5 +1,6 @@
-import pprint
-
+"""
+TODO make a better example
+"""
 import transformers
 
 from dyna_gym.pipelines import uct_for_hf_transformer_pipeline
@@ -18,6 +19,8 @@ uct_args = dict(
     gamma = 1.,
     width = 3,
     alg = 'uct',
+    lambda_coeff = 0.5,
+    value_func = lambda seq: 0,
 )
 
 # will be passed to huggingface model.generate()

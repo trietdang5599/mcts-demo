@@ -58,7 +58,6 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
         print("\t" * depth,
               repr(tokenizer.decode(node.action)),
               'prob', node.prob,
-              'v', chance_node_value(node),
               'returns', node.sampled_returns)
 
     pre_order_traverse(root, chance_node_fn=printer)

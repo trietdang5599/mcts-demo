@@ -14,7 +14,6 @@ def uct_for_hf_transformer_pipeline(
         tokenizer: transformers.PreTrainedTokenizer,
         horizon: int = 100,
         reward_func: Callable = None,
-        value_func: Callable = None,
         uct_args: dict = {},
         model_generation_args: dict = {},
         should_plot_tree: bool = False,
@@ -35,7 +34,12 @@ def uct_for_hf_transformer_pipeline(
     """
     eos_token_id = tokenizer.eos_token_id
 
-    env = gym.make('LanguageEnv-v0', terminal_token=eos_token_id, horizon=horizon, reward_func=reward_func)
+    env = gym.make(
+        'LanguageEnv-v0',
+        terminal_token=eos_token_id,
+        horizon=horizon,
+        reward_func=reward_func
+    )
 
     default_policy = HuggingFaceDefaultPolicy(
         env=env,
@@ -50,7 +54,6 @@ def uct_for_hf_transformer_pipeline(
     )
 
     ### Run
-    # FIXME doesn't support batched input
     def generate(input_ids, attention_mask=None):
         if not isinstance(input_ids, torch.Tensor):
             input_ids = torch.tensor(input_ids)
@@ -63,6 +66,7 @@ def uct_for_hf_transformer_pipeline(
                 attention_mask = (input_ids != tokenizer.pad_token_id).long()
 
         env.reset(input_ids, attention_mask)
+        # do all rollouts in one step
         env.step(agent.act(env, done=False))
         output_ids_list = agent.rolled_out_trajectories
 

@@ -32,6 +32,7 @@ class LanguageEnv(gym.Env):
             attention_mask = torch.ones_like(input_ids)
 
         self.state = (input_ids, attention_mask)
+        self.input_len = len(input_ids)
         return self.state
 
     def transition(self, s, a, is_model_dynamic=False):

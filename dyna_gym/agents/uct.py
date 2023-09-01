@@ -31,7 +31,9 @@ class UCT(object):
             default_policy=None,
             ts_mode='sample',
             reuse_tree=False,
-            alg='uct'
+            alg='uct',
+            lambda_coeff=0.,
+            value_func=None,
     ):
         """
         Args:
@@ -76,6 +78,9 @@ class UCT(object):
                 self.ucb_base = ucb_base
         else:
             raise Exception(f'unknown uct alg {alg}')
+
+        self.lambda_coeff = lambda_coeff
+        self.value_func = value_func
 
         self.reset()
 
