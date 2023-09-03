@@ -1,4 +1,4 @@
-# Dyna-Gym for LLMs
+# Monte-Carlo Tree Search for Large Language Models
 
 This repository is a fork of [Dyna Gym](https://github.com/SuReLI/dyna-gym) and extends its functionality to focus on using Monte-Carlo tree search for decoding large language models (LLMs).
 
@@ -7,12 +7,12 @@ This repository is a fork of [Dyna Gym](https://github.com/SuReLI/dyna-gym) and 
 First, create a new Conda environment (optional):
 
 ```bash
-conda create --name dyna-gym-llm python=3.10
-conda activate dyna-gym-llm
+conda create --name mcts-for-llm python=3.10
+conda activate mcts-for-llm
 ```
 We tested on python 3.10.0. Other versions may work as well.
 
-Then, install the package:
+Then, git clone this repo and install the package:
 
 ```bash
 pip install -e .
