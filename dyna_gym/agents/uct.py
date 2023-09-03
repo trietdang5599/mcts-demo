@@ -87,6 +87,7 @@ class UCT(object):
     def reset(self):
         self.root = None
         self.rolled_out_trajectories = []
+        self.rolled_out_rewards = []
 
     def display(self):
         """

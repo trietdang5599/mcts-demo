@@ -74,7 +74,7 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
             G.add_node(child_id)
 
             avg_return = np.mean(node.sampled_returns)
-            edge_label = f'{repr(tokenizer.decode(node.action))} p={node.prob:.2f} r={avg_return:.2f}'
+            edge_label = f'{repr(tokenizer.decode(node.action))}\np={node.prob:.2f}\nR={avg_return:.2f}'
             G.add_edge(parent_id, child_id, label=edge_label)
 
     pre_order_traverse(root, chance_node_fn=add_node)

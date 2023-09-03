@@ -3,7 +3,6 @@ Randomly generated NSMDP
 """
 
 import logging
-import math
 import numpy as np
 import dyna_gym.utils.distribution as distribution
 from gym import Env, error, spaces, utils

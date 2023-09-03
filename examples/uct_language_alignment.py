@@ -1,26 +1,27 @@
-"""
-TODO make a better example
-"""
 import transformers
+from transformers import pipeline
 
 from dyna_gym.pipelines import uct_for_hf_transformer_pipeline
 
 
-def length_reward_func(input_str: list) -> float:
-    # input_ids -> reward
-    # the shorter, the better
-    return -len(input_str)
+# define a reward function based on sentiment of the generated text
+sentiment_pipeline = pipeline("sentiment-analysis")
+def sentiment_analysis(sentence):
+    output = sentiment_pipeline(sentence)[0]
+    if output['label'] == 'POSITIVE':
+        return output['score']
+    else:
+        return -output['score']
 
-horizon = 100
+# maximum number of steps / tokens to generate in each episode
+horizon = 50
 
-# arguments for UCT agent
+# arguments for the UCT agent
 uct_args = dict(
-    rollouts = 5,
+    rollouts = 20,
     gamma = 1.,
     width = 3,
-    alg = 'uct',
-    lambda_coeff = 0.5,
-    value_func = lambda seq: 0,
+    alg = 'uct', # or p_uct
 )
 
 # will be passed to huggingface model.generate()
@@ -39,13 +40,17 @@ pipeline = uct_for_hf_transformer_pipeline(
     model = model,
     tokenizer = tokenizer,
     horizon = horizon,
-    reward_func = length_reward_func,
+    reward_func = sentiment_analysis,
     uct_args = uct_args,
     model_generation_args = model_generation_args,
-    should_plot_tree = True,
+    should_plot_tree = True, # plot the tree after generation
 )
-input_ids = tokenizer.encode("Hello, I'm a language model,")
-outputs = pipeline(input_ids=input_ids)
 
-# decoded texts
-print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
+input_str = "What do you think of this movie?"
+outputs = pipeline(input_str=input_str)
+
+for text, reward in zip(outputs['texts'], outputs['rewards']):
+    print("==== Text ====")
+    print(text)
+    print("==== Reward:", reward, "====")
+    print()

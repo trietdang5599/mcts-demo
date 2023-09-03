@@ -4,7 +4,6 @@ import dyna_gym.utils.distribution as distribution
 from random import randint
 from six import StringIO, b
 from gym import Env, spaces, utils
-from gym.envs.toy_text import discrete
 
 
 LEFT = 0

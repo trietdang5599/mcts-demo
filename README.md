@@ -1,80 +1,39 @@
-# Dyna Gym
+# Dyna-Gym for LLMs
 
-This is a fork of DynaGym that focuses on using MCTS for LLMs.
+This repository is a fork of [Dyna Gym](https://github.com/SuReLI/dyna-gym) and extends its functionality to focus on using Monte-Carlo tree search for decoding large language models (LLMs).
 
-TODOs
-- [x] Add a Huggingface model-based default policy.
-- [ ] Update this README.
+## Installation
 
----
-
-This is a pip package implementing Reinforcement Learning algorithms in non-stationary environments supported by the <a href="https://gym.openai.com/">OpenAI Gym</a> toolkit.
-It contains both the dynamic environments i.e. whose transition and reward functions depend on the time and some algorithms implementations.
-
-# Environments
-
-The implemented environments are the following and can be found at `dyna-gym/dyna_gym/envs`.
-For each environment, the id given as argument to the gym.make function is writen in bold.
-
-- <b>RandomNSMDP-v0</b>. A randomly generated NSMDP;
-
-- <b>NSFrozenLakeEnv-v0</b>. A frozen lake environment where the ice is melting resulting in time-varying transition probabilities;
-<p align="center">
-	<img height="100" width="auto" src="img/nsfrozenlake.gif">
-</p>
-<p align="center">
-	<b>NSFrozenLakeEnv-v0</b> environment. The probability distribution of a next state's transition depends on time.
-</p>
-
-- <b>NSCartPole-v0</b>. A cart pole environment with a time-varying direction of the gravitational force;
-<p align="center">
-	<img height="250" width="auto" src="img/cartpole_nstransition.gif">
-</p>
-<p align="center">
-	Cart pole in the <b>NSCartPole-v0</b> environment. The red bar indicates the direction of the gravitational force.
-</p>
-
-- <b>NSCartPole-v1</b>. A cart pole environment with a double objective: to balance the pole and to keep the position of the cart along the x-axis within a time-varying interval;
-<p align="center">
-	<img height="250" width="auto" src="img/cartpole_nsreward1.gif">
-</p>
-<p align="center">
-	Cart pole in the <b>NSCartPole-v1</b> environment. The two red dots correspond to the limiting interval.
-</p>
-
-- <b>NSCartPole-v2</b>. A cart pole environment with a time-varying cone into which the pole should balance.
-<p align="center">
-	<img height="250" width="auto" src="img/cartpole_nsreward2.gif">
-</p>
-<p align="center">
-	Cart pole in the <b>NSCartPole-v2</b> environment. The two black lines correspond to the limiting angle interval.
-</p>
-
-
-# Algorithms
-
-The implemented algorithms are the following and can be found at `dyna-gym/dyna_gym/agents`.
-- Random action selection;
-- Vanilla MCTS algorithm (random tree policy);
-- <a href="http://ggp.stanford.edu/readings/uct.pdf">UCT algorithm</a>.
-
-# Installation
-
-Type the following commands in order to install the package:
+First, create a new Conda environment (optional):
 
 ```bash
-cd dyna-gym
+conda create --name dyna-gym-llm python=3.10
+conda activate dyna-gym-llm
+```
+We tested on python 3.10.0. Other versions may work as well.
+
+Then, install the package:
+
+```bash
 pip install -e .
 ```
 
-Examples are provided in the `example/` repository. You can run them using your
-installed version of Python.
+## Examples
 
-# Dependencies
+### Using GPT-2 and UCT for Language Alignment with Positive Sentiment Reward
 
-Edit June 12 June 2018.
+Run the following command to generate texts using the GPT-2 model, guided by UCT (Upper Confidence Bound applied to Trees) for language alignment. Positive sentiment is used as the reward.
 
-The package depends on several classic Python libraries. An up to date list is the following: copy; csv; gym; itertools; logging; math; matplotlib; numpy; random; setuptools; statistics.
+```bash
+python examples/uct_language_alignment.py
+```
 
-Non classic libraries are also used by some algorithms: scikit-learn (see <a href="http://scikit-learn.org/stable/index.html">website</a>); LWPR (see <a href="https://github.com/lhlmgr/lwpr">git repository</a> for a Python 3 binding).
+### Classic Planning Domains (Non-LLM)
 
+This repository also includes some classic planning domains derived from the original Dyna Gym repo. These examples don't use LLMs but may be useful for debugging purposes.
+
+```bash
+python examples/uct_nscartpole_v0.py
+python examples/uct_nscartpole_v1.py
+...
+```

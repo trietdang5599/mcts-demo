@@ -17,6 +17,7 @@ def uct_for_hf_transformer_pipeline(
         uct_args: dict = {},
         model_generation_args: dict = {},
         should_plot_tree: bool = False,
+        reward_func_input_is_state: bool = False,
 ) -> Callable:
     """
     A wrapped UCT agent for HuggingFace transformer.
@@ -31,14 +32,25 @@ def uct_for_hf_transformer_pipeline(
         uct_args: Arguments for the UCT agent.
         model_generation_args: Arguments for the model generation.
         should_plot_tree: Whether to plot the tree after generation.
+        reward_func_input_is_state: Whether the input of the reward function is (token ids, attention masks) or tokenized text.
     """
     eos_token_id = tokenizer.eos_token_id
+
+    if not reward_func_input_is_state:
+        # reward function takes tokenized text as input, decode tokeni ids here
+        # if reward function takes token ids as input, this step can be saved
+        def reward_func_(state):
+            ids, attention_mask = state
+            text = tokenizer.decode(ids, skip_special_tokens=True)
+            return reward_func(text)
+    else:
+        reward_func_ = reward_func
 
     env = gym.make(
         'LanguageEnv-v0',
         terminal_token=eos_token_id,
         horizon=horizon,
-        reward_func=reward_func
+        reward_func=reward_func_,
     )
 
     default_policy = HuggingFaceDefaultPolicy(
@@ -54,9 +66,12 @@ def uct_for_hf_transformer_pipeline(
     )
 
     ### Run
-    def generate(input_ids, attention_mask=None):
-        if not isinstance(input_ids, torch.Tensor):
-            input_ids = torch.tensor(input_ids)
+    def generate(input_ids=None, input_str=None, attention_mask=None):
+        assert (input_ids is None) != (input_str is None), "Only provide one of input_ids and input_str"
+
+        if input_str is not None:
+            input_ids = tokenizer.encode(input_str)
+            input_ids = torch.tensor(input_ids).to(model.device)
 
         if attention_mask is None:
             # attend to tokens that are not padding
@@ -64,20 +79,25 @@ def uct_for_hf_transformer_pipeline(
                 attention_mask = torch.ones_like(input_ids)
             else:
                 attention_mask = (input_ids != tokenizer.pad_token_id).long()
+            attention_mask = attention_mask.to(model.device)
 
         env.reset(input_ids, attention_mask)
         # do all rollouts in one step
         env.step(agent.act(env, done=False))
-        output_ids_list = agent.rolled_out_trajectories
 
         if should_plot_tree:
             # plot (and print) the tree
             from dyna_gym.utils.tree_search_utils import plot_tree
             plot_tree(agent.root, env, tokenizer,f"tree-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
 
-        # clear the rolled out trajectories
-        agent.reset()
+        results = {
+            'output_ids': agent.rolled_out_trajectories,
+            'rewards': agent.rolled_out_rewards,
+            'texts': [tokenizer.decode(ids, skip_special_tokens=True) for ids in agent.rolled_out_trajectories],
+        }
 
-        return output_ids_list
+        # clear for the next generation call
+        agent.reset()
+        return results
 
     return generate

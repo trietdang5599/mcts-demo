@@ -118,6 +118,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
                 estimate = env.get_reward(state)
 
                 ag.rolled_out_trajectories.append(state[0])
+                ag.rolled_out_rewards.append(estimate)
                 # also save this to current nodes for possible visualization
                 node.info['complete_program'] = state[0]
             else:
@@ -127,9 +128,8 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
         if ag.lambda_coeff > 0:
             assert ag.value_func is not None, "value_func must be provided if lambda_coeff > 0"
 
-            input_ids = current_state[0][:env.input_len]
-            response_ids = current_state[0][env.input_len:]
-            value = ag.value_func(input_ids, response_ids)
+            state_ids = current_state[0]
+            value = ag.value_func(state_ids)
             estimate = ag.lambda_coeff * value + (1 - ag.lambda_coeff) * estimate
 
         # Backpropagation
@@ -143,7 +143,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
             node.parent.visits += 1
             node = node.parent.parent
 
-        # should finish backpropagating all the rewards back
+        # should finish backpropagating all the rewards
         assert len(rewards) == 0
 
     return max(root.children, key=lambda n: chance_node_value(n, mode=ts_mode)).action, root
@@ -225,6 +225,7 @@ class MCTS(object):
         self.gamma = gamma
         self.is_model_dynamic = is_model_dynamic
         self.default_policy = default_policy
+        self.lambda_coeff = 0.0
 
     def display(self):
         """
