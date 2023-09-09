@@ -58,7 +58,7 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
         root = DecisionNode(None, env.state, ag.action_space.copy(), done, default_policy=ag.default_policy, id=decision_node_num)
         decision_node_num += 1
 
-    for _ in tqdm(range(ag.rollouts), desc="Rolling out"):
+    for _ in tqdm(range(ag.rollouts), desc="Rolling out", leave=False):
         if term_cond is not None and term_cond():
             break
         rewards = [] # Rewards collected along the tree for the current rollout

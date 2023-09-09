@@ -1,6 +1,5 @@
 import random
 
-import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -47,11 +46,7 @@ def get_all_decision_nodes(root: DecisionNode):
     return decision_nodes
 
 
-def plot_tree(root: DecisionNode, env, tokenizer, filename):
-    """
-    Plot the tree rooted at root
-    """
-    # first, print the tree
+def print_tree(root: DecisionNode, tokenizer):
     def printer(node: ChanceNode, depth):
         # print the average return of the *parent* of this state
         # (this is easier to implement than printing all its children nodes)
@@ -62,6 +57,12 @@ def plot_tree(root: DecisionNode, env, tokenizer, filename):
 
     pre_order_traverse(root, chance_node_fn=printer)
 
+
+def plot_tree(root: DecisionNode, tokenizer, filename):
+    """
+    Plot the tree rooted at root
+    """
+    import networkx as nx
     # plot the tree
     G = nx.DiGraph()
     G.add_node(root.id, label='<PD>')

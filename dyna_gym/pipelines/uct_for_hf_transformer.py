@@ -7,6 +7,7 @@ import transformers
 
 from dyna_gym.agents import uct
 from dyna_gym.default_policy.hf_default_policy import HuggingFaceDefaultPolicy
+from dyna_gym.utils.tree_search_utils import print_tree
 
 
 def uct_for_hf_transformer_pipeline(
@@ -85,10 +86,15 @@ def uct_for_hf_transformer_pipeline(
         # do all rollouts in one step
         env.step(agent.act(env, done=False))
 
+        # print tree
+        print_tree(agent.root, tokenizer)
+        # optionally, plot the tree and save to a pdf file
         if should_plot_tree:
             # plot (and print) the tree
             from dyna_gym.utils.tree_search_utils import plot_tree
-            plot_tree(agent.root, env, tokenizer,f"tree-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+            filename = f"tree-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            plot_tree(agent.root, tokenizer, filename)
+            print(f"Tree plotted and saved to {filename}.pdf")
 
         results = {
             'output_ids': agent.rolled_out_trajectories,
@@ -98,6 +104,7 @@ def uct_for_hf_transformer_pipeline(
 
         # clear for the next generation call
         agent.reset()
+
         return results
 
     return generate
