@@ -31,7 +31,7 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
         attention_mask = attention_mask.unsqueeze(0)
 
         outputs = self.model.generate(
-            input_data,
+            inputs=input_data,
             attention_mask=attention_mask,
             max_length=horizon,
             early_stopping=True,
