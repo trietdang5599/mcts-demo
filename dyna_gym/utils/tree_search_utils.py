@@ -1,5 +1,6 @@
 import random
 
+import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -62,7 +63,6 @@ def plot_tree(root: DecisionNode, tokenizer, filename):
     """
     Plot the tree rooted at root
     """
-    import networkx as nx
     # plot the tree
     G = nx.DiGraph()
     G.add_node(root.id, label='<PD>')
