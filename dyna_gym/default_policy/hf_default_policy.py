@@ -21,7 +21,10 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
         self.generate_args = generation_args
 
     @torch.no_grad()
-    def get_predicted_sequence(self, state, horizon=None):
+    def rollout_sequence(self, state, horizon=None):
+        """
+        Generate a sequence of tokens according to self.generate_args from the current state.
+        """
         ids, attention_mask = state
 
         horizon = horizon if horizon is not None else self.horizon
@@ -51,6 +54,10 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
 
     @torch.no_grad()
     def get_top_k_tokens(self, state):
+        """
+        Get the top k tokens and their probabilities from the current state.
+        top_k and top_p are both implemented.
+        """
         k = self.generate_args['top_k']
         p = self.generate_args['top_p']
 
@@ -71,7 +78,7 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
         # Convert logits to probabilities
         all_probs = torch.softmax(logits, dim=-1)
 
-        # Get the top k probabilities and their indices, already sorted
+        # Get the top k probabilities and their indices, sorted
         topk_probs, topk_indices = torch.topk(all_probs, k, sorted=True)
 
         # Compute the cumulative sum of the sorted probabilities

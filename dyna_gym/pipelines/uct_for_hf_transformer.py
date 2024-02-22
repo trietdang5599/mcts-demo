@@ -38,8 +38,8 @@ def uct_for_hf_transformer_pipeline(
     eos_token_id = tokenizer.eos_token_id
 
     if not reward_func_input_is_state:
-        # reward function takes tokenized text as input, decode tokeni ids here
-        # if reward function takes token ids as input, this step can be saved
+        # by default reward function takes tokenized text as input
+        # if reward function takes texts as input, wrap it here to take (token ids, attention masks) as input
         def reward_func_(state):
             ids, attention_mask = state
             text = tokenizer.decode(ids, skip_special_tokens=True)

@@ -10,7 +10,7 @@ First, create a new Conda environment (optional):
 conda create --name mcts-for-llm python=3.10
 conda activate mcts-for-llm
 ```
-We tested on python 3.10.0. Other versions may work as well.
+We tested on python 3.10. Other versions may work as well.
 
 Then, git clone this repo and install the package:
 

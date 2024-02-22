@@ -12,5 +12,6 @@ setup(name='dyna_gym',
             'transformers',
             'scipy',
             'matplotlib',
+            'networkx', # for tree plotting
       ]
 )

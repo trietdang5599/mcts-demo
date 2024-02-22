@@ -93,7 +93,7 @@ def plot_tree(root: DecisionNode, tokenizer, filename):
     plt.close()
 
 
-def convert_to_json(root: DecisionNode, env, selected_act):
+def convert_to_json(root: DecisionNode, env):
     """
     A function to serialize a tree and return a json object
     """
@@ -101,16 +101,15 @@ def convert_to_json(root: DecisionNode, env, selected_act):
 
     def get_info(node: ChanceNode, depth):
         if node.action == env.terminal_token:
-            # terminal state has no complete_program attribute, since the program is already complete
-            complete_program = env.convert_state_to_program(node.children[0].state)
+            terminal_state = env.convert_state_to_program(node.children[0].state)
         else:
-            complete_program = env.convert_state_to_program(node.children[0].info['complete_program'])
+            # get the terminal state that is reached by rolling out from this node
+            terminal_state = env.convert_state_to_program(node.children[0].info['terminal_state'])
 
         info = {'token': env.tokenizer.decode(node.action),
                 'state': env.convert_state_to_program(node.children[0].state),
-                'selected': node.action == selected_act,
                 'score': chance_node_value(node),
-                'complete_program': complete_program}
+                'terminal_state': terminal_state}
         ret.append(info)
 
     pre_order_traverse(root, chance_node_fn=get_info)

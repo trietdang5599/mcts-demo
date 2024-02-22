@@ -15,7 +15,7 @@ class DefaultPolicy:
         self.horizon = horizon
 
     @abstractmethod
-    def get_predicted_sequence(self, state, horizon: int = None):
+    def rollout_sequence(self, state, horizon: int = None):
         pass
 
     @abstractmethod

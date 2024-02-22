@@ -99,11 +99,11 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
                     node = node.children[-1]
 
         # Evaluation
-        # now `rewards` collected all rewards in the ChanceNodes above this node
         assert(type(node) == DecisionNode)
         state = node.state
         current_state = state
         if ag.default_policy is None:
+            # no default policy, use a random policy
             t = 0
             estimate = 0
             while (not terminal) and (t < ag.horizon):
@@ -112,15 +112,17 @@ def mcts_procedure(ag, tree_policy, env, done, root=None, term_cond=None, ts_mod
                 estimate += reward * (ag.gamma**t)
                 t += 1
         else:
+            # rollout using the default policy
             if not node.is_terminal:
                 # follow the default policy to get a terminal state
-                state = ag.default_policy.get_predicted_sequence(state)
+                state = ag.default_policy.rollout_sequence(state)
                 estimate = env.get_reward(state)
 
                 ag.rolled_out_trajectories.append(state[0])
                 ag.rolled_out_rewards.append(estimate)
-                # also save this to current nodes for possible visualization
-                node.info['complete_program'] = state[0]
+
+                # also log the terminal state to current nodes
+                node.info['terminal_state'] = state[0]
             else:
                 # the rewards are defined on terminating actions, the terminal states have no rewards
                 estimate = 0
