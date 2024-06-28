@@ -105,21 +105,29 @@ class UCT(object):
 
     def ucb(self, node):
         """
-        Upper Confidence Bound of a chance node
+        Upper Confidence Bound of a chance node.
         """
         return mcts.chance_node_value(node)\
             + self.ucb_constant * sqrt(log(node.parent.visits)) / (1 + len(node.sampled_returns))
 
     def p_ucb(self, node):
         """
-        Upper Confidence Bound of a chance node, weighted by prior probability
+        Upper Confidence Bound of a chance node, weighted by prior probability.
+
+        Reference:
+        Rosin, Christopher D. "Multi-armed bandits with episode context." Annals of Mathematics and Artificial Intelligence 61.3 (2011): 203-230.
         """
         return mcts.chance_node_value(node)\
             + self.ucb_constant * node.prob * sqrt(log(node.parent.visits)) / (1 + len(node.sampled_returns))
 
     def var_p_ucb(self, node):
         """
-        Upper Confidence Bound of a chance node, the ucb exploration weight is a variable
+        Upper Confidence Bound of a chance node, where the ucb exploration weight is a variable.
+        This is a variation of the P-UCB algorithm used in AlphaZero. See Section "Search" on Page 17 in 
+        https://discovery.ucl.ac.uk/id/eprint/10069050/1/alphazero_preprint.pdf
+
+        Reference:
+        Silver, David, et al. "A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play." Science 362.6419 (2018): 1140-1144.
         """
         ucb_parameter = log((node.parent.visits + self.ucb_base + 1) / self.ucb_base) + self.ucb_constant
         return mcts.chance_node_value(node)\
