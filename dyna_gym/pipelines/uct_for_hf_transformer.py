@@ -9,6 +9,60 @@ from dyna_gym.agents import uct
 from dyna_gym.default_policy.hf_default_policy import HuggingFaceDefaultPolicy
 from dyna_gym.utils.tree_search_utils import print_tree
 
+# --- Compat helpers for old Gym (0.20/0.21) vs new Gym/Gymnasium (>=0.26) ---
+def _compat_reset(env, input_ids, attention_mask):
+    """
+    Try multiple reset signatures:
+      1) new API: reset(options={...})
+      2) old-like keyword passthrough: reset(input_ids=..., attention_mask=...)
+      3) bypass wrapper: env.unwrapped.reset(input_ids, attention_mask)
+    Return: obs (or (obs, info) -> we normalize to (obs, info))
+    """
+    # 1) New API (keyword-only): seed=None, options=dict
+    try:
+        out = env.reset(options={"input_ids": input_ids, "attention_mask": attention_mask})
+        # Gymnasium: (obs, info); Old gym w/ wrapper might return obs
+        if isinstance(out, tuple) and len(out) == 2:
+            return out[0], out[1]
+        else:
+            return out, {}
+    except TypeError:
+        pass
+
+    # 2) Some old wrappers forward **kwargs
+    try:
+        out = env.reset(input_ids=input_ids, attention_mask=attention_mask)
+        if isinstance(out, tuple) and len(out) == 2:
+            return out[0], out[1]
+        else:
+            return out, {}
+    except TypeError:
+        pass
+
+    # 3) Fallback: call unwrapped (custom env reset signature)
+    out = env.unwrapped.reset(input_ids, attention_mask)
+    if isinstance(out, tuple) and len(out) == 2:
+        return out[0], out[1]
+    else:
+        return out, {}
+
+def _compat_step(env, action):
+    """
+    Normalize step returns to (obs, reward, done, info).
+    - New API: (obs, reward, terminated, truncated, info)
+    - Old API: (obs, reward, done, info)
+    """
+    out = env.step(action)
+    if isinstance(out, tuple):
+        if len(out) == 5:
+            obs, reward, terminated, truncated, info = out
+            done = bool(terminated) or bool(truncated)
+            return obs, reward, done, info
+        elif len(out) == 4:
+            obs, reward, done, info = out
+            return obs, reward, bool(done), info
+    raise RuntimeError("Unexpected env.step() return format: {}".format(type(out)))
+
 
 def uct_for_hf_transformer_pipeline(
         model: transformers.PreTrainedModel,
@@ -82,9 +136,11 @@ def uct_for_hf_transformer_pipeline(
                 attention_mask = (input_ids != tokenizer.pad_token_id).long()
             attention_mask = attention_mask.to(model.device)
 
-        env.reset(input_ids, attention_mask)
+        # env.reset(input_ids, attention_mask)
+        obs, info = _compat_reset(env, input_ids, attention_mask)
         # do all rollouts in one step
-        env.step(agent.act(env, done=False))
+        # env.step(agent.act(env, done=False))
+        obs, reward, done, info = _compat_step(env, agent.act(env, done=False))
 
         # print tree
         print_tree(agent.root, tokenizer)

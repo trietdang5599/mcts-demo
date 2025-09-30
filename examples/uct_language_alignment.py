@@ -32,7 +32,7 @@ model_generation_args = dict(
     temperature = 0.7,
 )
 
-model_name = "gpt2"
+model_name = "Qwen/Qwen2.5-1.5B-Instruct"
 model = transformers.AutoModelForCausalLM.from_pretrained(model_name)
 tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
 
@@ -46,7 +46,7 @@ pipeline = uct_for_hf_transformer_pipeline(
     should_plot_tree = True, # plot the tree after generation
 )
 
-input_str = "What do you think of this movie?"
+input_str = "What do you think of this game?"
 outputs = pipeline(input_str=input_str)
 
 for text, reward in zip(outputs['texts'], outputs['rewards']):
