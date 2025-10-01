@@ -13,3 +13,5 @@ nsmdp_algorithms
 .venv/
 .venv310/
 tree-*
+outputs
+=0.21.0

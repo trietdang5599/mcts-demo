@@ -10,6 +10,8 @@ setup(name='dyna_gym',
             'gym==0.20.0',
             'torch',
             'transformers',
+            'datasets',
+            'accelerate>=0.24.0',
             'scipy',
             'matplotlib',
             'networkx', # for tree plotting

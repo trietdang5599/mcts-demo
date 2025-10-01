@@ -14,11 +14,13 @@ def uct_for_hf_transformer_pipeline(
         model: transformers.PreTrainedModel,
         tokenizer: transformers.PreTrainedTokenizer,
         horizon: int = 100,
-        reward_func: Callable = None,
+        reward_func: Callable | None = None,
         uct_args: dict = {},
         model_generation_args: dict = {},
         should_plot_tree: bool = False,
+        should_print_tree: bool = True,
         reward_func_input_is_state: bool = False,
+        decode_skip_special_tokens: bool = True,
 ) -> Callable:
     """
     A wrapped UCT agent for HuggingFace transformer.
@@ -33,8 +35,13 @@ def uct_for_hf_transformer_pipeline(
         uct_args: Arguments for the UCT agent.
         model_generation_args: Arguments for the model generation.
         should_plot_tree: Whether to plot the tree after generation.
+        should_print_tree: Whether to print the tree structure to stdout after generation.
         reward_func_input_is_state: Whether the input of the reward function is (token ids, attention masks) or tokenized text.
+        decode_skip_special_tokens: Whether decoded outputs should skip special tokens by default.
     """
+    if reward_func is None:
+        reward_func = lambda _: 0.0  # type: ignore[assignment]
+
     eos_token_id = tokenizer.eos_token_id
 
     if not reward_func_input_is_state:
@@ -66,8 +73,17 @@ def uct_for_hf_transformer_pipeline(
         **uct_args
     )
 
+    default_reward = reward_func_
+    default_skip_special_tokens = decode_skip_special_tokens
+
     ### Run
-    def generate(input_ids=None, input_str=None, attention_mask=None):
+    def generate(
+            input_ids=None,
+            input_str=None,
+            attention_mask=None,
+            reward_override: Callable | None = None,
+            skip_special_tokens: bool | None = None,
+    ):
         assert (input_ids is None) != (input_str is None), "Only provide one of input_ids and input_str"
 
         if input_str is not None:
@@ -82,14 +98,27 @@ def uct_for_hf_transformer_pipeline(
                 attention_mask = (input_ids != tokenizer.pad_token_id).long()
             attention_mask = attention_mask.to(model.device)
 
+        if reward_override is not None:
+            if reward_func_input_is_state:
+                env.get_reward = reward_override
+            else:
+                def wrapped_reward(state):
+                    ids, attention_mask = state
+                    text = tokenizer.decode(ids, skip_special_tokens=True)
+                    return reward_override(text)
+
+                env.get_reward = wrapped_reward
+        else:
+            env.get_reward = default_reward
+
         # Gọi reset với options, không truyền positional args
         env.reset(options={"input_ids": input_ids, "attention_mask": attention_mask})
 
         # step trả 5 phần tử, nhưng bạn đang không unpack => vẫn OK.
         env.step(agent.act(env, done=False))
 
-        # print tree
-        print_tree(agent.root, tokenizer)
+        if should_print_tree:
+            print_tree(agent.root, tokenizer)
         # optionally, plot the tree and save to a pdf file
         if should_plot_tree:
             # plot (and print) the tree
@@ -98,14 +127,28 @@ def uct_for_hf_transformer_pipeline(
             plot_tree(agent.root, tokenizer, filename)
             print(f"Tree plotted and saved to {filename}.pdf")
 
+        skip_special = default_skip_special_tokens if skip_special_tokens is None else skip_special_tokens
+
+        decoded_plain = [
+            tokenizer.decode(ids, skip_special_tokens=True)
+            for ids in agent.rolled_out_trajectories
+        ]
+        decoded_with_special = [
+            tokenizer.decode(ids, skip_special_tokens=False)
+            for ids in agent.rolled_out_trajectories
+        ]
+
         results = {
             'output_ids': agent.rolled_out_trajectories,
             'rewards': agent.rolled_out_rewards,
-            'texts': [tokenizer.decode(ids, skip_special_tokens=True) for ids in agent.rolled_out_trajectories],
+            'texts': decoded_plain if skip_special else decoded_with_special,
+            'texts_plain': decoded_plain,
+            'texts_with_special_tokens': decoded_with_special,
         }
 
         # clear for the next generation call
         agent.reset()
+        env.get_reward = default_reward
 
         return results
 

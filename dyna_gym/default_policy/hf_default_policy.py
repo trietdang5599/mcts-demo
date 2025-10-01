@@ -33,10 +33,17 @@ class HuggingFaceDefaultPolicy(DefaultPolicy):
         input_data = ids.unsqueeze(0)
         attention_mask = attention_mask.unsqueeze(0)
 
+        prompt_len = input_data.shape[-1]
+        if horizon <= prompt_len:
+            # ensure at least one token can be generated
+            max_new_tokens = 1
+        else:
+            max_new_tokens = horizon - prompt_len
+
         outputs = self.model.generate(
             inputs=input_data,
             attention_mask=attention_mask,
-            max_length=horizon,
+            max_new_tokens=max_new_tokens,
             early_stopping=True,
             return_dict_in_generate=True,
             use_cache=True,
