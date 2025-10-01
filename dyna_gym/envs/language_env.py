@@ -24,42 +24,37 @@ class LanguageEnv(gym.Env):
         self.horizon = horizon
 
         self.get_reward = reward_func
+        self.state = None
+        self.input_len = 0
 
-    def reset(self, input_ids, attention_mask=None):
-        if attention_mask is not None:
-            attention_mask = attention_mask
-        else:
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
+        options = options or {}
+        input_ids = options.get("input_ids")
+        attention_mask = options.get("attention_mask")
+
+        if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
 
         self.state = (input_ids, attention_mask)
         self.input_len = len(input_ids)
-        return self.state
+        # API mới: trả về (obs, info)
+        return self.state, {}
 
     def transition(self, s, a, is_model_dynamic=False):
         ids, attention_mask = s
-
-        # s is a one-dimensional tensor, a is a token id (scalar), concatenate them to form a new state
         next_ids = torch.cat([ids, torch.tensor([a]).to(ids.device)])
-        # append a 1 to the attention mask
         attention_mask = torch.cat([attention_mask, torch.tensor([1]).to(attention_mask.device)])
 
-        if a == self.terminal_token or len(next_ids) == self.horizon:
-            # either the text finishes, or the state reaches the maximum length
-            done = True
-        else:
-            done = False
+        done = (a == self.terminal_token) or (len(next_ids) == self.horizon)
 
-        if done:
-            reward = self.get_reward((next_ids, attention_mask))
-        else:
-            reward = 0  # no intermediate reward
-
+        reward = self.get_reward((next_ids, attention_mask)) if done else 0
         return (next_ids, attention_mask), reward, done
 
     def step(self, action):
         self.state, reward, done = self.transition(self.state, action)
+        return self.state, reward, done, {}  # 4-tuple cho Gym cũ
 
-        return self.state, reward, done, {}
 
     def equality_operator(self, s1, s2):
         # s1 and s2 are two tensors

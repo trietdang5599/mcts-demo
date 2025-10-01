@@ -73,6 +73,17 @@ class NSCartPoleV0(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
+    def reset(self, *, seed=None, options=None):
+        # quan trọng: gọi super().reset(seed=seed) để set RNG theo chuẩn mới
+        super().reset(seed=seed)
+        # nếu muốn dùng RNG:
+        # self.np_random = np.random.default_rng(seed)  # hoặc gym.utils.seeding.np_random(seed)[0] cho gym cũ
+        # Khởi tạo state:
+        self.state = np.zeros(5, dtype=np.float32)  # ví dụ
+        obs = self.state.astype(np.float32)
+        info = {}
+        return obs, info
+    
     def transition(self, state, action, is_model_dynamic):
         '''
         Transition operator, return the resulting state, reward and a boolean indicating

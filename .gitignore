@@ -10,5 +10,6 @@ dyna_gym/agents/test.py
 examples/uct_nativecartpole.py
 nsmdp-algorithms
 nsmdp_algorithms
+.venv/
 .venv310/
 tree-*

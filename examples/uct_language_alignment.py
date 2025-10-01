@@ -3,6 +3,10 @@ from transformers import pipeline
 
 from dyna_gym.pipelines import uct_for_hf_transformer_pipeline
 
+model_name = "Qwen/Qwen2.5-1.5B-Instruct"
+model = transformers.AutoModelForCausalLM.from_pretrained(model_name)
+tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
+
 
 # define a reward function based on sentiment of the generated text
 sentiment_pipeline = pipeline("sentiment-analysis")
@@ -28,13 +32,13 @@ uct_args = dict(
 model_generation_args = dict(
     top_k = 3,
     top_p = 0.9,
-    do_sample = True,
+    do_sample = False,
     temperature = 0.7,
+    repetition_penalty=1.15,
+    no_repeat_ngram_size=3,
+    eos_token_id=tokenizer.eos_token_id,
 )
 
-model_name = "Qwen/Qwen2.5-1.5B-Instruct"
-model = transformers.AutoModelForCausalLM.from_pretrained(model_name)
-tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
 
 pipeline = uct_for_hf_transformer_pipeline(
     model = model,
@@ -46,7 +50,7 @@ pipeline = uct_for_hf_transformer_pipeline(
     should_plot_tree = True, # plot the tree after generation
 )
 
-input_str = "What do you think of this game?"
+input_str = "What do you think about Spider Man movie? \n"
 outputs = pipeline(input_str=input_str)
 
 for text, reward in zip(outputs['texts'], outputs['rewards']):
