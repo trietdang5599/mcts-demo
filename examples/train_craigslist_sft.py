@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import List
 
+import logging
 import torch
 from datasets import Dataset, DatasetDict
 from transformers import (
@@ -16,11 +17,14 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
+from transformers.trainer_callback import TrainerCallback
 
 # Allow running the script without installing the package
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+logger = logging.getLogger(__name__)
 
 from dyna_gym.data_utils import (
     CRAIGSLIST_SPECIAL_TOKENS,
@@ -37,6 +41,58 @@ def build_dataset(data_dir: Path, splits: List[str], include_outcome: bool = Tru
         texts = [render_dialogue(ex, include_outcome=include_outcome) for ex in examples]
         datasets[split] = Dataset.from_dict({"text": texts})
     return DatasetDict(datasets)
+
+
+def _format_metrics(metrics: dict) -> str:
+    parts = []
+    for key, value in sorted(metrics.items()):
+        if key in {"total_flos", "log_history"}:
+            continue
+        if isinstance(value, float):
+            parts.append(f"{key}={value:.4f}")
+        else:
+            parts.append(f"{key}={value}")
+    return ", ".join(parts) if parts else ""
+
+
+class ConsoleLoggerCallback(TrainerCallback):
+    """Emit concise training/evaluation logs to the terminal."""
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        if not state.is_local_process_zero:
+            return
+        if getattr(state, "max_steps", 0):
+            logger.info(
+                "Starting training: up to %s steps across %.2f epochs",
+                state.max_steps,
+                args.num_train_epochs,
+            )
+        else:
+            logger.info("Starting training for %.2f epochs", args.num_train_epochs)
+
+    def on_train_end(self, args, state, control, **kwargs):
+        if state.is_local_process_zero:
+            logger.info("Training complete after %s global steps", state.global_step)
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if not state.is_local_process_zero or not logs:
+            return
+        metrics = {
+            key: value
+            for key, value in logs.items()
+            if key not in {"total_flos", "log_history", "step"}
+        }
+        if not metrics:
+            return
+        step = logs.get("step") or state.global_step
+        logger.info("Step %s -> %s", step, _format_metrics(metrics))
+
+    def on_evaluate(self, args, state, control, metrics=None, **kwargs):
+        if not state.is_local_process_zero or not metrics:
+            return
+        logger.info("Evaluation metrics: %s", _format_metrics(metrics))
+
+
 
 
 def tokenize_dataset(tokenizer, dataset: DatasetDict, max_length: int):
@@ -71,8 +127,24 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+
 def main() -> None:
     args = parse_args()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+    logger.info(
+        "Starting supervised fine-tuning with model=%s, train_split=%s, eval_split=%s",
+        args.model_name,
+        args.train_split,
+        args.eval_split,
+    )
+    logger.info("Output directory: %s", args.output_dir)
+
     torch.manual_seed(args.seed)
 
     data_dir = args.data_dir
@@ -82,12 +154,21 @@ def main() -> None:
     tokenizer.add_special_tokens(CRAIGSLIST_SPECIAL_TOKENS)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    logger.info("Tokenizer initialised (vocab size=%d)", len(tokenizer))
 
     model = AutoModelForCausalLM.from_pretrained(args.model_name)
     model.resize_token_embeddings(len(tokenizer))
 
     dataset = build_dataset(data_dir, [args.train_split, args.eval_split])
+    for split_name, split_dataset in dataset.items():
+        logger.info("Loaded %d formatted dialogues for split '%s'", len(split_dataset), split_name)
+
     tokenized = tokenize_dataset(tokenizer, dataset, args.max_length)
+    logger.info(
+        "Tokenized dataset sizes -> train: %d | eval: %d",
+        len(tokenized[args.train_split]),
+        len(tokenized[args.eval_split]),
+    )
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
@@ -108,7 +189,14 @@ def main() -> None:
         seed=args.seed,
         fp16=args.fp16,
         bf16=args.bf16,
-        report_to=[]
+        report_to=[],
+    )
+    logger.info(
+        "Training args: epochs=%s, lr=%s, batch_size=%s, grad_accum=%s",
+        training_args.num_train_epochs,
+        training_args.learning_rate,
+        training_args.per_device_train_batch_size,
+        training_args.gradient_accumulation_steps,
     )
 
     trainer = Trainer(
@@ -118,9 +206,12 @@ def main() -> None:
         eval_dataset=tokenized[args.eval_split],
         tokenizer=tokenizer,
         data_collator=data_collator,
+        callbacks=[ConsoleLoggerCallback()],
     )
 
+    logger.info("Commencing training loop")
     trainer.train()
+    logger.info("Saving fine-tuned model to %s", args.output_dir)
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
 
