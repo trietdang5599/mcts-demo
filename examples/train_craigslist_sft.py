@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data_dir", type=Path, default=Path("dataset/craigslist_bargains"), help="Path to the dataset directory containing raw/*.json")
     parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-0.5B-Instruct", help="Base model or path to fine-tune")
     parser.add_argument("--output_dir", type=Path, default=Path("outputs/craigslist-sft"), help="Directory to store checkpoints")
-    parser.add_argument("--max_length", type=int, default=512, help="Maximum sequence length for training")
+    parser.add_argument("--max_length", type=int, default=50, help="Maximum sequence length for training")
     parser.add_argument("--batch_size", type=int, default=4, help="Per-device batch size")
     parser.add_argument("--gradient_accumulation", type=int, default=8, help="Gradient accumulation steps")
     parser.add_argument("--epochs", type=float, default=2, help="Number of epochs")

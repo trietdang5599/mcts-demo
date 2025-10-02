@@ -159,7 +159,7 @@ def parse_args() -> argparse.Namespace:
         default=2,
         help='Number of ground-truth turns to condition on',
     )
-    parser.add_argument('--max_length', type=int, default=512)
+    parser.add_argument('--max_length', type=int, default=128)
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--gradient_accumulation', type=int, default=16)
     parser.add_argument('--epochs', type=float, default=1.0)
