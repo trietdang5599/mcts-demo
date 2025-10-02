@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu
+
+# Enable pipefail when supported (POSIX shells may not implement it)
+if (set -o pipefail 2>/dev/null); then
+    :
+else
+    printf '[WARN] pipefail not supported; continuing without it.\n' >&2
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -24,6 +31,8 @@ Options:
   --sft-output PATH          Override SFT output directory
   --mcts-output PATH         Override MCTS output directory
   --eval-output PATH         Override evaluation output directory
+  --cuda-devices IDS         Comma-separated GPU ids to expose (default: 0)
+  --require-cuda             Fail fast if CUDA is unavailable
   --num_samples N            Dialogues to generate during MCTS (default: 128)
   --rollouts N               Rollouts per search step for MCTS (default: 24)
   --prompt_turns N           Prompt turns passed to generator (default: 2)
@@ -36,6 +45,7 @@ Options:
 Examples:
   bash run/run_method_negotiation.sh \
       --model_name distilgpt2 \
+      --cuda-devices 0 \
       --num_samples 256 --rollouts 32 \
       --mcts-extra "--epochs 1 --eval_samples 512"
 USAGE
@@ -43,12 +53,14 @@ USAGE
 
 trap 'log "Pipeline failed." >&2' ERR
 
-MODEL_NAME="Qwen/Qwen2.5-7B-Instruct"
+MODEL_NAME="Qwen/Qwen2.5-0.5B-Instruct"
 DATA_DIR="${PROJECT_ROOT}/dataset/craigslist_bargains"
 RUN_NAME=""
 SFT_OUTPUT=""
 MCTS_OUTPUT=""
 EVAL_OUTPUT=""
+CUDA_DEVICES="0"
+REQUIRE_CUDA=false
 NUM_SAMPLES=128
 ROLLOUTS=24
 PROMPT_TURNS=2
@@ -71,6 +83,10 @@ while [[ $# -gt 0 ]]; do
             MCTS_OUTPUT="$2"; shift 2 ;;
         --eval-output)
             EVAL_OUTPUT="$2"; shift 2 ;;
+        --cuda-devices)
+            CUDA_DEVICES="$2"; shift 2 ;;
+        --require-cuda)
+            REQUIRE_CUDA=true; shift 1 ;;
         --num_samples)
             NUM_SAMPLES="$2"; shift 2 ;;
         --rollouts)
@@ -93,6 +109,34 @@ while [[ $# -gt 0 ]]; do
             exit 1 ;;
     esac
 done
+
+export CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}"
+log "CUDA_VISIBLE_DEVICES set to ${CUDA_VISIBLE_DEVICES}"
+
+CUDA_REQUIRED_FLAG="0"
+if ${REQUIRE_CUDA}; then
+    CUDA_REQUIRED_FLAG="1"
+fi
+
+if ! RUNNER_REQUIRE_CUDA="${CUDA_REQUIRED_FLAG}" python - <<'PY'
+import os
+import sys
+try:
+    import torch
+except Exception as exc:  # torch not installed or broken
+    print(f"CUDA check failed to import torch: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+
+require = os.environ.get("RUNNER_REQUIRE_CUDA") == "1"
+available = torch.cuda.is_available()
+print(f"CUDA available: {available}")
+if require and not available:
+    raise SystemExit(1)
+PY
+then
+    echo "[ERROR] CUDA required but not available." >&2
+    exit 1
+fi
 
 if [[ -z "${RUN_NAME}" ]]; then
     RUN_NAME="run-$(date +'%Y%m%d-%H%M%S')"
